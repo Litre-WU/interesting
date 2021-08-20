@@ -77,7 +77,7 @@ def net_ease_search(key="T恤", page=1, size=40, sort_type=0):
 
 
 # 网易严选-商品评价
-def net_ease_comment(item_id="3989332", page=1, size=30, order_by=0):
+def net_ease_comment(item_id="4000070", page=1, size=30, order_by=0):
     meta = {
         "url": "https://you.163.com/xhr/comment/listByItemByTag.json",
         "params": {
@@ -99,7 +99,7 @@ def net_ease_comment(item_id="3989332", page=1, size=30, order_by=0):
 
 
 # 评论区图片下载
-def mul_get(item_id="3989332"):
+def mul_get(item_id="4000070"):
     result = net_ease_comment(item_id=item_id)
     pages = result["data"]["pagination"]["totalPage"]
     if pages > 1:
@@ -133,7 +133,7 @@ def mul_get(item_id="3989332"):
 
 
 if __name__ == '__main__':
-    id_list = net_ease_search(key="内衣", size=500)
+    id_list = net_ease_search(size=500)
     print(id_list)
     for item_id in id_list:
         mul_get(item_id)
