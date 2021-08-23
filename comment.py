@@ -8,7 +8,7 @@ import requests
 from user_agent import generate_user_agent
 from random import randint
 from time import sleep
-from json import loads, dump
+from json import loads, dumps, dump
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 
@@ -67,13 +67,15 @@ def net_ease_search(key="T恤", page=1, size=40, sort_type=0):
         }
     }
     result = pub_req(**meta)
-    if result:
-        result = loads(result.decode())
-        pages = result["data"]["directly"]["searcherResult"]["pagination"]["totalPage"]
-        # print(pages)
-        id_list = [r["id"] for r in result["data"]["directly"]["searcherResult"]["result"]]
-        return id_list
-    return result
+    try:
+        if result:
+            result = loads(result.decode())
+            pages = result["data"]["directly"]["searcherResult"]["pagination"]["totalPage"]
+            # print(pages)
+            id_list = [r["id"] for r in result["data"]["directly"]["searcherResult"]["result"]]
+            return id_list
+    except Exception as e:
+        print("net_ease_search", e)
 
 
 # 网易严选-商品评价
@@ -93,12 +95,15 @@ def net_ease_comment(item_id="4000070", page=1, size=30, order_by=0):
     }
     res = pub_req(**meta)
     if not res: return None
-    result = loads(res.decode())
-    # print(result)
-    return result
+    try:
+        result = loads(res.decode())
+        # print(result)
+        return result
+    except Exception as e:
+        print("net_ease_comment", e)
 
 
-# 评论区图片下载
+# 网易严选-评论区图片下载
 def mul_get(key="", item_id="4000070"):
     result = net_ease_comment(item_id=item_id)
     pages = result["data"]["pagination"]["totalPage"]
@@ -134,8 +139,70 @@ def mul_get(key="", item_id="4000070"):
         return result["data"]["commentList"]
 
 
+# 小米有品-搜索
+def mi_you_pin_search(key="T恤", page=1, size=40, sort_type=0):
+    meta = {
+        "method": "POST",
+        "url": "https://www.xiaomiyoupin.com/mtop/market/search/v2/doSearch",
+        "data": dumps([{}, {"query": [{"queryName": key, "queryType": 0, "rule": []}], "sortBy": sort_type, "pageIdx": page,
+                            "strategyInfo": None, "filter": None,
+                            "baseParam": {"imei": "", "clientVersion": "", "ypClient": 3}, "source": "searchPage",
+                            "requestId": "", "clientPageId": "", "recentAddress": None,
+                            "requestExtraInfo": {}, "pageSize": size}]),
+        "headers": {
+            "Accept-Encoding": "gzip, deflate, br",
+            "Content-Type": "application/json"
+        }
+    }
+    result = pub_req(**meta)
+    print(result.decode())
+    try:
+        if result:
+            result = loads(result.decode())
+            total = result["data"]["total"]
+            # print(total)
+            return result
+    except Exception as e:
+        print(mi_you_pin_search, e)
+
+
+# 小米有品-商品评价
+def mi_you_pin_comment(item_id="129064", page=1, size=10):
+    meta = {
+        "method": "POST",
+        "url": "https://www.xiaomiyoupin.com/mtop/market/comment/product/content",
+        "data": dumps({"gid": item_id,
+                       "folding": False,
+                       "source": "PC",
+                       "tag_name": "全部",
+                       "tag_id": "__all__",
+                       "psize": size,
+                       "pindex": page,
+                       "pids": [],
+                       "session_id": ""
+                       }),
+        "headers": {
+            "Content-Type": "application/json",
+            "Accept-Encoding": "gzip, deflate, br"
+        }
+    }
+    res = pub_req(**meta)
+    if not res: return None
+    try:
+        print(res.decode())
+        result = loads(res.decode())
+        return result
+    except Exception as e:
+        print("mi_you_pin_comment", e)
+
+
 if __name__ == '__main__':
     key = "T恤"
-    id_list = net_ease_search(key=key, size=500)
-    for item_id in id_list:
-        mul_get(key, item_id)
+    # 网易严选
+    # id_list = net_ease_search(key=key, size=500)
+    # for item_id in id_list:
+    #     mul_get(key, item_id)
+
+    # 小米有品
+    # mi_you_pin_search(key)
+    mi_you_pin_comment()
