@@ -99,7 +99,7 @@ def net_ease_comment(item_id="4000070", page=1, size=30, order_by=0):
 
 
 # 评论区图片下载
-def mul_get(item_id="4000070"):
+def mul_get(key="", item_id="4000070"):
     result = net_ease_comment(item_id=item_id)
     pages = result["data"]["pagination"]["totalPage"]
     if pages > 1:
@@ -117,24 +117,25 @@ def mul_get(item_id="4000070"):
         for x in result_list:
             if x.get("picList", ""):
                 pic_list += x["picList"]
+        if not pic_list: return None
         print(pic_list)
         print(len(pic_list))
         workers = 32 if len(pic_list) > 32 else len(pic_list)
         with ThreadPoolExecutor(workers) as executor:
             future_list = {executor.submit(pub_req, **{"url": url}): url for
                            url in pic_list}
-        os.makedirs(f'imgs/{item_id}', exist_ok=True)
+        os.makedirs(f'imgs/{key}/{item_id}', exist_ok=True)
         for r in as_completed(future_list):
-            with open(f'imgs/{item_id}/{future_list[r].split("?")[0].split("/")[-1]}', 'wb') as f:
-                f.write(r.result())
+            if r.result():
+                with open(f'imgs/{key}/{item_id}/{future_list[r].split("?")[0].split("/")[-1]}', 'wb') as f:
+                    f.write(r.result())
         return result_list
     else:
         return result["data"]["commentList"]
 
 
 if __name__ == '__main__':
-    id_list = net_ease_search(size=500)
-    print(id_list)
+    key = "T恤"
+    id_list = net_ease_search(key=key, size=500)
     for item_id in id_list:
-        mul_get(item_id)
-
+        mul_get(key, item_id)
