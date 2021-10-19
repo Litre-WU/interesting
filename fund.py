@@ -10,12 +10,14 @@ from user_agent import generate_user_agent
 from time import sleep
 from random import randint
 from json import loads
+from collections import Counter
 import pandas as pd
 import pyecharts.options as opts
 from pyecharts.charts import Line
 from pyecharts.commons.utils import JsCode
 
 
+# 公共请求
 async def req(**kwargs):
     proxy = kwargs.get("proxy", "")
     method = kwargs.get("method", "GET")
@@ -56,6 +58,7 @@ async def req(**kwargs):
         return await req(**kwargs)
 
 
+# 基金查询
 async def query_fund(**kwargs):
     meta = {
         "url": "https://fundsuggest.eastmoney.com/FundCodeNew.aspx",
@@ -73,15 +76,16 @@ async def query_fund(**kwargs):
     return res
 
 
+# 基金详情
 async def fund_detail(**kwargs):
     meta = {"url": f"https://j5.fund.eastmoney.com/sc/tfs/qt/v2.0.1/{kwargs.get('code', '012414')}.json"}
     res = await req(**meta)
     if not res: return None
     res = loads(res.decode())
-    print(res)
     return res
 
 
+# 历史记录
 async def fund_records(**kwargs):
     meta = {
         "url": f'https://uni-fundts.1234567.com.cn/dataapi/fund/FundVPageAcc',
@@ -159,6 +163,7 @@ async def fund_records(**kwargs):
     return res
 
 
+# 基金实时估值
 async def fund_estimate(**kwargs):
     meta = {
         "url": "https://fundmobapi.eastmoney.com/FundMApi/FundVarietieValuationDetail.ashx",
@@ -173,15 +178,35 @@ async def fund_estimate(**kwargs):
     res = await req(**meta)
     if not res: return None
     res = loads(res.decode())
-    print(res)
     return res
 
 
+# 基金重仓股
+async def fund2stock(**kwargs):
+    code_list = kwargs.get("codeList", ["012414", "003634", "001027"])
+    if not code_list: return None
+    tasks = [asyncio.create_task(fund_detail(**{"code": code_list[_]})) for _ in range(len(code_list))]
+    res_list = await asyncio.gather(*tasks)
+    fund_stock_list = [{"code": r["JJXQ"]["Datas"]["FCODE"],"name":r["JJXQ"]["Datas"]["SHORTNAME"], "manager": r["JJJL"]["Datas"][0]["MGRNAME"],
+                        "foundTime": r["JJJL"]["Datas"][0]["FEMPDATE"],
+                        "stockList": r["JJCC"]["Datas"]["InverstPosition"]["fundStocks"]} for r in res_list]
+    stock_list = []
+    for f in fund_stock_list:
+        stock_list += f["stockList"]
+    # code_list = [s["GPDM"] for s in stock_list]
+    name_list = [s["GPJC"] for s in stock_list]
+    stock_rank_list = dict(Counter(name_list).most_common(len(name_list)))
+    result = {"stockRank": stock_rank_list, "fundInfo": fund_stock_list}
+    return result
+
+
+# 数据分析页面
 async def gen_html(**kwargs):
     title = kwargs.get("title", "某商场销售情况")
     subtitle = kwargs.get("subtitle", "实时数据")
     x_list = kwargs.get("x_list", ["衬衫", "毛衣", "领带", "裤子", "风衣", "高跟鞋", "袜子"])
-    y_list = kwargs.get("y_list", [{"商家A": [114, 55, 27, 101, 125, 27, 105]}, {"商家B": [57, 134, 137, 129, 145, 60, 49]}])
+    y_list = kwargs.get("y_list",
+                        [{"商家A": [114, 55, 27, 101, 125, 27, 105]}, {"商家B": [57, 134, 137, 129, 145, 60, 49]}])
 
     line = Line(init_opts=opts.InitOpts(width="1600px", height="800px"))
     line.add_xaxis(x_list)
@@ -194,4 +219,6 @@ async def gen_html(**kwargs):
 
 
 if __name__ == '__main__':
-    rs = asyncio.get_event_loop().run_until_complete(gen_html())
+    # rs = asyncio.get_event_loop().run_until_complete(fund_detail())
+    rs = asyncio.get_event_loop().run_until_complete(fund2stock())
+    print(rs)
